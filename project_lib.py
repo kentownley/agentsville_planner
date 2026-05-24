@@ -410,8 +410,11 @@ def calculator_tool(expression: str) -> str:
         return f"ERROR: could not evaluate '{expression}': {exc}"
 
 
-def get_activities_by_date_tool(date: str) -> List[Dict[str, Any]]:
-    """Return the list of activities available in AgentsVille on a given date.
+SUPPORTED_CITIES = {"agentsville"}
+
+
+def get_activities_by_date_tool(date: str, city: str) -> List[Dict[str, Any]]:
+    """Return the list of activities available in a given city on a given date.
 
     Use this tool when you need to look up which activities are bookable on a
     specific day — for example, to find a replacement activity after another
@@ -421,6 +424,9 @@ def get_activities_by_date_tool(date: str) -> List[Dict[str, Any]]:
     Args:
         date (str): The date to look up, formatted as an ISO 8601 calendar
             date string in the form 'YYYY-MM-DD' (e.g., '2025-06-11').
+        city (str): The destination city to search, e.g. 'AgentsVille'. Case
+            insensitive. Only AgentsVille has activity data available; any
+            other city will return an empty list.
 
     Returns:
         list[dict]: A list of activity records. Each record is a dict with the
@@ -428,8 +434,11 @@ def get_activities_by_date_tool(date: str) -> List[Dict[str, Any]]:
             'location' (str), 'start_time' (str, ISO 8601 datetime),
             'end_time' (str, ISO 8601 datetime), 'price' (float, per person USD),
             'related_interests' (list[str]), and 'indoor' (bool).
-            Returns an empty list if no activities are available on that date.
+            Returns an empty list if no activities are available, if the city
+            is not supported, or if the date format is invalid.
     """
+    if not isinstance(city, str) or city.strip().lower() not in SUPPORTED_CITIES:
+        return []
     try:
         target = datetime.fromisoformat(date).date() if "T" in date else datetime.strptime(date, "%Y-%m-%d").date()
     except ValueError as exc:
@@ -496,11 +505,15 @@ def build_available_tools(run_evals_tool: Callable[..., Dict[str, Any]]) -> Dict
         "get_activities_by_date_tool": {
             "function": get_activities_by_date_tool,
             "description": (
-                "Look up available activities in AgentsVille for a single date. "
+                "Look up available activities in a given city on a single date. "
                 "Returns a list of activity records (activity_id, name, description, location, "
-                "start_time, end_time, price, related_interests, indoor)."
+                "start_time, end_time, price, related_interests, indoor). "
+                "Only AgentsVille has activity data; other cities return an empty list."
             ),
-            "parameters": {"date": "str (YYYY-MM-DD)"},
+            "parameters": {
+                "date": "str (YYYY-MM-DD)",
+                "city": "str (e.g. 'AgentsVille')",
+            },
         },
         "run_evals_tool": {
             "function": run_evals_tool,
